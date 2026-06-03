@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wildest Dreams – Taylor Swift</title>
+  <style>
+    :root { --green:#1DB954; --bg:#121212; --bg2:#0a0a0a; --dim:rgba(255,255,255,0.3); --mid:rgba(255,255,255,0.55); --white:#ffffff; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { 
+      background:#000; 
+      min-height:100vh; 
+      display:flex; 
+      flex-direction:column; 
+      align-items:center; 
+      justify-content:center;
+      padding:2rem 1rem; 
+      font-family:'Segoe UI',sans-serif;
+      position:relative;
+      overflow:hidden;
+    }
+    .video-fondo {
+      position:fixed; top:0; left:0;
+      width:100%; height:100%;
+      object-fit:cover; z-index:0; opacity:0.55;
+      transition:opacity 0.8s ease;
+    }
+    .video-fondo.fade-out { opacity:0; }
+    .overlay {
+      position:fixed; top:0; left:0;
+      width:100%; height:100%;
+      background:rgba(0,0,0,0.3); z-index:1; pointer-events:none;
+    }
+    .player { 
+      position:relative; z-index:2; 
+      background:rgba(0,0,0,0.6); border-radius:20px; 
+      width:100%; max-width:420px; overflow:hidden; 
+      color:var(--white); backdrop-filter:blur(15px); 
+      box-shadow:0 8px 32px rgba(0,0,0,0.5); 
+    }
+    .album-cover { 
+      position:relative; height:370px; 
+      background:transparent; 
+      display:flex; flex-direction:column; 
+      align-items:center; justify-content:center; 
+      padding:2rem 1.5rem 1.5rem; gap:18px; 
+    }
+    .album-art { 
+      width:180px; height:180px; border-radius:16px; 
+      overflow:hidden; 
+      animation:glow 3s ease-in-out infinite; 
+      box-shadow:0 8px 30px rgba(0,0,0,0.7); 
+      background:rgba(255,255,255,0.05);
+    }
+    .album-art img { width:100%; height:100%; object-fit:cover; display:block; }
+    @keyframes glow { 
+      0%,100% { box-shadow:0 0 20px rgba(255,255,255,0.2),0 8px 30px rgba(0,0,0,0.7); } 
+      50% { box-shadow:0 0 40px rgba(255,255,255,0.4),0 8px 30px rgba(0,0,0,0.7); } 
+    }
+    .song-info { text-align:center; }
+    .song-title { font-size:26px; font-weight:700; text-shadow:0 2px 8px rgba(0,0,0,0.8); margin-bottom:6px; }
+    .song-artist { font-size:16px; color:rgba(255,255,255,0.75); text-shadow:0 1px 4px rgba(0,0,0,0.8); }
+    .btn-heart { 
+      position:absolute; top:18px; right:18px; 
+      background:none; border:none; font-size:26px; 
+      color:var(--green); cursor:pointer; z-index:3; 
+      filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6)); 
+    }
+    .btn-heart:active { transform:scale(1.3); }
+    .select-cancion {
+      background:rgba(255,255,255,0.08); color:white; 
+      border:1px solid rgba(255,255,255,0.25); border-radius:20px; 
+      padding:8px 16px; font-size:13px;
+      cursor:pointer; backdrop-filter:blur(8px);
+      outline:none; text-align:center;
+      transition:border-color .2s; margin-top:2px;
+    }
+    .select-cancion:hover { border-color:var(--green); }
+    .select-cancion option { background:#1a1a2e; color:white; }
+    .progress-area { padding:14px 20px 6px; }
+    .bar-wrap { background:rgba(255,255,255,0.2); border-radius:4px; height:5px; cursor:pointer; transition:height .15s; }
+    .bar-wrap:hover { height:7px; }
+    .bar-fill { height:100%; background:var(--green); border-radius:4px; width:0%; transition:width .25s linear; position:relative; }
+    .bar-fill::after { content:''; position:absolute; right:-6px; top:50%; transform:translateY(-50%); width:12px; height:12px; background:var(--white); border-radius:50%; opacity:0; transition:opacity .15s; }
+    .bar-wrap:hover .bar-fill::after { opacity:1; }
+    .times { display:flex; justify-content:space-between; font-size:12px; color:var(--dim); margin-top:6px; }
+    .controls { display:flex; align-items:center; justify-content:center; gap:28px; padding:14px 0 20px; }
+    .btn-ctrl { background:none; border:none; color:rgba(255,255,255,0.7); font-size:22px; cursor:pointer; transition:color .15s,transform .1s; position:relative; }
+    .btn-ctrl:hover { color:var(--white); }
+    .btn-ctrl:active { transform:scale(0.9); }
+    .btn-ctrl.activo { color:var(--green); }
+    .btn-ctrl.repeat-uno::after { content:'1'; position:absolute; top:-4px; right:-8px; font-size:10px; font-weight:bold; color:var(--green); }
+    .btn-play { background:var(--white); border:none; width:50px; height:50px; border-radius:50%; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:transform .1s,box-shadow .15s; box-shadow:0 2px 10px rgba(0,0,0,0.4); }
+    .btn-play:hover { box-shadow:0 0 25px rgba(29,185,84,0.6); }
+    .btn-play:active { transform:scale(0.95); }
+    .lyrics-area { background:rgba(0,0,0,0.5); max-height:230px; overflow-y:auto; padding:0 20px 20px; scrollbar-width:none; }
+    .lyrics-area::-webkit-scrollbar { display:none; }
+    .lyrics-header { display:flex; justify-content:space-between; font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.08em; padding:14px 0 10px; }
+    .lyric-line { font-size:20px; font-weight:600; line-height:1.5; color:rgba(255,255,255,0.55); padding:2px 0; transition:color .3s,font-size .3s; text-shadow:0 2px 6px rgba(0,0,0,0.8); }
+    .lyric-line.activa { color:var(--white); font-size:23px; text-shadow:0 2px 10px rgba(0,0,0,0.9); }
+    .lyric-line.pasada { color:rgba(255,255,255,0.35); }
+
+    /* ══════════════ ICONO CARTA ══════════════ */
+    .carta-hint {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 20px 0 10px;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+      pointer-events: none;
+      background: rgba(0,0,0,0.5);
+      border-radius: 0 0 20px 20px;
+    }
+    .carta-hint.visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+    .carta-hint-label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.45);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .btn-carta {
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: cartaFloat 2.5s ease-in-out infinite;
+      filter: drop-shadow(0 0 8px rgba(255, 200, 150, 0.5));
+    }
+    .btn-carta:hover { filter: drop-shadow(0 0 14px rgba(255, 200, 150, 0.9)); }
+    @keyframes cartaFloat {
+      0%,100% { transform: translateY(0px) rotate(-1deg); }
+      50%      { transform: translateY(-5px) rotate(1deg); }
+    }
+
+    /* ══════════════ MODAL CARTA ══════════════ */
+    .carta-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+      backdrop-filter: blur(4px);
+    }
+    .carta-overlay.abierta {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .carta-escena {
+      perspective: 900px;
+      width: 340px;
+      max-width: 100%;
+    }
+
+    .sobre {
+      position: relative;
+      width: 100%;
+      height: 210px;
+      transform-style: preserve-3d;
+      transform: rotateX(0deg);
+    }
+
+    .sobre-cuerpo {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(160deg, #2a1a0e, #1a0e06);
+      border-radius: 6px 6px 10px 10px;
+      border: 1px solid rgba(200,160,80,0.4);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.6), inset 0 0 30px rgba(180,120,40,0.05);
+      overflow: hidden;
+    }
+    .sobre-cuerpo::before {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 50%;
+      background: linear-gradient(160deg, #1e1208, #281505);
+      clip-path: polygon(0% 100%, 50% 0%, 100% 100%);
+    }
+    .sobre-cuerpo::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(to bottom right, transparent 49.5%, rgba(200,160,80,0.15) 49.5%, rgba(200,160,80,0.15) 50.5%, transparent 50.5%),
+        linear-gradient(to bottom left,  transparent 49.5%, rgba(200,160,80,0.15) 49.5%, rgba(200,160,80,0.15) 50.5%, transparent 50.5%);
+    }
+
+    .sobre-solapa {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 55%;
+      background: linear-gradient(160deg, #3a2510, #261508);
+      border-radius: 6px 6px 0 0;
+      border: 1px solid rgba(200,160,80,0.4);
+      border-bottom: none;
+      transform-origin: top center;
+      transform: rotateX(0deg);
+      transition: transform 0.7s cubic-bezier(0.4,0,0.2,1);
+      z-index: 3;
+      clip-path: polygon(0% 0%, 100% 0%, 50% 100%);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+    .sobre-solapa.abierta {
+      transform: rotateX(-160deg);
+    }
+
+    .lacre {
+      position: absolute;
+      top: 42%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 36px; height: 36px;
+      background: radial-gradient(circle at 40% 35%, #c0392b, #7b1010);
+      border-radius: 50%;
+      border: 2px solid rgba(220,160,80,0.6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      z-index: 4;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5), inset 0 1px 3px rgba(255,200,150,0.2);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+    .lacre.oculto {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.5);
+      pointer-events: none;
+    }
+
+    .carta-papel {
+      position: absolute;
+      bottom: 6px; left: 8px; right: 8px;
+      height: 190px;
+      background: linear-gradient(160deg, #fdf6e8, #f5e8cc);
+      border-radius: 4px;
+      border: 1px solid rgba(200,160,80,0.3);
+      transform: translateY(0px);
+      transition: transform 0.8s cubic-bezier(0.4,0,0.2,1) 0.4s,
+                  height 0.8s cubic-bezier(0.4,0,0.2,1) 0.4s;
+      z-index: 2;
+      overflow: hidden;
+      box-shadow: 0 -2px 14px rgba(0,0,0,0.3);
+    }
+    .carta-papel.emergiendo {
+      transform: translateY(-200px);
+      height: 360px;
+    }
+
+    .carta-texto {
+      padding: 20px 22px 16px;
+      font-family: 'Georgia', 'Times New Roman', serif;
+      color: #2a1a06;
+      font-size: 14px;
+      line-height: 1.75;
+      opacity: 0;
+      transition: opacity 0.6s ease 1.1s;
+      height: 100%;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(180,130,60,0.3) transparent;
+    }
+    .carta-texto::-webkit-scrollbar { width: 4px; }
+    .carta-texto::-webkit-scrollbar-thumb { background: rgba(180,130,60,0.3); border-radius: 2px; }
+    .carta-texto.visible { opacity: 1; }
+
+    .carta-texto p { margin-bottom: 12px; }
+    .carta-texto .saludo { font-size: 16px; font-weight: bold; margin-bottom: 16px; color: #1a0e04; }
+    .carta-texto .firma { margin-top: 18px; font-style: italic; color: #3a2510; font-size: 15px; }
+
+    .carta-papel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        transparent,
+        transparent 27px,
+        rgba(180,130,60,0.12) 27px,
+        rgba(180,130,60,0.12) 28px
+      );
+      pointer-events: none;
+    }
+
+    .btn-cerrar-carta {
+      position: absolute;
+      top: -14px; right: -14px;
+      width: 32px; height: 32px;
+      background: rgba(30,15,5,0.9);
+      border: 1px solid rgba(200,160,80,0.4);
+      border-radius: 50%;
+      color: rgba(255,220,150,0.8);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s, color 0.2s;
+      z-index: 10;
+    }
+    .btn-cerrar-carta:hover {
+      background: rgba(200,160,80,0.2);
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+  <video class="video-fondo" id="videoFondo" autoplay muted loop playsinline>
+    <source src="Video.mp4" type="video/mp4">
+  </video>
+  <div class="overlay"></div>
+
+  <div class="player">
+    <div class="album-cover">
+      <button class="btn-heart" id="btnHeart">♡</button>
+      
+      <div class="album-art">
+        <img id="imgPortada" src="https://upload.wikimedia.org/wikipedia/en/f/f6/Taylor_Swift_-_1989.png" alt="Album">
+      </div>
+      
+      <div class="song-info">
+        <p class="song-title" id="txtTitulo">Wildest Dreams</p>
+        <p class="song-artist" id="txtArtista">Taylor Swift · 1989</p>
+      </div>
+      
+      <select class="select-cancion" id="selectCancion">
+        <option value="0"> Wildest Dreams - Taylor Swift</option>
+        <option value="1"> Video Games - Lana Del Rey</option>
+        <option value="2"> Dancing Queen - ABBA</option>
+        <option value="3"> I Wanna Be Yours - Arctic Monkeys</option>
+      </select>
+    </div>
+    
+    <div class="progress-area">
+      <div class="bar-wrap" id="barWrap">
+        <div class="bar-fill" id="barFill"></div>
+      </div>
+      <div class="times">
+        <span id="tActual">0:00</span>
+        <span id="tTotal">--:--</span>
+      </div>
+    </div>
+    
+    <div class="controls">
+      <button class="btn-ctrl" id="btnShuffle">⇄</button>
+      <button class="btn-ctrl" id="btnPrev">⏮</button>
+      <button class="btn-play" id="btnPlay">▶</button>
+      <button class="btn-ctrl" id="btnNext">⏭</button>
+      <button class="btn-ctrl" id="btnRepeat">↻</button>
+    </div>
+    
+    <div class="lyrics-area">
+      <div class="lyrics-header">
+        <span>Letra</span>
+        <span>Sincronizada</span>
+      </div>
+      <div id="contenedor"></div>
+    </div>
+
+    <!-- Ícono de carta (FUERA del lyrics-area) -->
+    <div class="carta-hint" id="cartaHint">
+      <span class="carta-hint-label">Para ti</span>
+      <button class="btn-carta" id="btnCarta" aria-label="Abrir carta">
+        <svg width="44" height="34" viewBox="0 0 44 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="1" y="1" width="42" height="32" rx="3" fill="#2a1a0e" stroke="rgba(200,160,80,0.7)" stroke-width="1.2"/>
+          <path d="M1 4 L22 20 L43 4" stroke="rgba(200,160,80,0.5)" stroke-width="1" fill="none"/>
+          <line x1="1" y1="33" x2="22" y2="18" stroke="rgba(200,160,80,0.35)" stroke-width="1"/>
+          <line x1="43" y1="33" x2="22" y2="18" stroke="rgba(200,160,80,0.35)" stroke-width="1"/>
+          <circle cx="22" cy="19" r="4" fill="#c0392b" stroke="rgba(220,160,80,0.6)" stroke-width="0.8"/>
+          <text x="22" y="22" text-anchor="middle" font-size="5" fill="rgba(255,220,180,0.9)">✦</text>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal / Animación de la carta -->
+  <div class="carta-overlay" id="cartaOverlay">
+    <div class="carta-escena">
+      <div class="sobre" id="sobreEl" style="position:relative;">
+        <div class="sobre-cuerpo"></div>
+        <div class="carta-papel" id="cartaPapel">
+          <div class="carta-texto" id="cartaTexto">
+            <p class="saludo">Ximena,</p>
+            <p>hice esto porque me pareció una idea bonita y diferente. Gracias por las pláticas, las risas y por todos esos momentos simples que, aunque parezcan pequeños, terminan haciendo especial una etapa de la vida.</p>
+            <p>Sé que a veces todo pasa muy rápido y cada quien sigue su camino, pero aun así hay personas que dejan recuerdos agradables sin darse cuenta. Tú eres una de esas personas.</p>
+            <p>Y pues… quería dejar algo un poco más original que un simple regalo.</p>
+            <p>Espero que te guste.</p>
+            <p class="firma">— Jesús</p>
+          </div>
+        </div>
+        <div class="sobre-solapa" id="sobreSolapa"></div>
+        <div class="lacre" id="lacre">✦</div>
+        <button class="btn-cerrar-carta" id="btnCerrarCarta">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <audio id="audio" preload="auto"></audio>
+
+  <script>
+    const canciones = [
+      {
+        titulo: "Wildest Dreams",
+        artista: "Taylor Swift · 1989",
+        archivo: "Wildest Dreams.mp3",
+        portada: "https://upload.wikimedia.org/wikipedia/en/f/f6/Taylor_Swift_-_1989.png",
+        videoFondo: "Video.mp4",
+        tieneCarta: false,
+        letra: [
+          { t: 13.1,  l: "He said let's get out of this town" },
+          { t: 16.1,  l: "Drive out of the city" },
+          { t: 17.9,  l: "Away from the crowds" },
+          { t: 20.1,  l: "I thought heaven can't help me now" },
+          { t: 22.9,  l: "Nothing lasts forever" },
+          { t: 25.1,  l: "But this is gonna take me down" },
+          { t: 27.4,  l: "He's so tall, and handsome as hell" },
+          { t: 31.2,  l: "He's so bad but he does it so well" },
+          { t: 33.9,  l: "I can see the end as it begins" },
+          { t: 37.8,  l: "My one condition is" },
+          { t: 41.1,  l: "Say you'll remember me" },
+          { t: 43.6,  l: "Standing in a nice dress" },
+          { t: 45.8,  l: "Staring at the sunset, babe" },
+          { t: 47.9,  l: "Red lips and rosy cheeks" },
+          { t: 50.4,  l: "Say you'll see me again" },
+          { t: 52.6,  l: "Even if it's just in your" },
+          { t: 54.6,  l: "Wildest dreams, oh, wildest dreams, oh" },
+          { t: 71.4,  l: "I say no one has to know what we do" },
+          { t: 74.4,  l: "His hands are in my hair, his clothes are in my room" },
+          { t: 78.4,  l: "And his voice is a familiar sound" },
+          { t: 81.1,  l: "Nothing lasts forever" },
+          { t: 83.6,  l: "But this is getting good now" },
+          { t: 86.1,  l: "He's so tall, and handsome as hell" },
+          { t: 89.3,  l: "He's so bad but he does it so well" },
+          { t: 92.5,  l: "And when we've had our very last kiss" },
+          { t: 95.8,  l: "My last request is" },
+          { t: 99.3,  l: "Say you'll remember me" },
+          { t: 101.7, l: "Standing in a nice dress" },
+          { t: 103.8, l: "Staring at the sunset, babe" },
+          { t: 105.9, l: "Red lips and rosy cheeks" },
+          { t: 108.6, l: "Say you'll see me again" },
+          { t: 110.5, l: "Even if it's just in your" },
+          { t: 112.5, l: "Wildest dreams, oh, wildest dreams, oh" },
+          { t: 126.5, l: "You'll see me in hindsight" },
+          { t: 128.6, l: "Tangled up with you all night" },
+          { t: 130.5, l: "Burning (burning) it (it) down (down)" },
+          { t: 133.9, l: "Someday when you leave me" },
+          { t: 135.9, l: "I bet these memories" },
+          { t: 137.1, l: "Follow (follow) you (you) around (follow you around)" },
+          { t: 140.5, l: "You'll see me in hindsight" },
+          { t: 142.3, l: "Tangled up with you all night" },
+          { t: 144.1, l: "Burning (burning) it (it) down (down)" },
+          { t: 147.2, l: "Someday when you leave me" },
+          { t: 149.1, l: "I bet these memories" },
+          { t: 151.1, l: "Follow (follow) you (you) around (follow you around)" },
+          { t: 158.1, l: "Say you'll remember me" },
+          { t: 160.2, l: "Standing in a nice dress" },
+          { t: 162.5, l: "Staring at the sunset, babe" },
+          { t: 164.8, l: "Red lips and rosy cheeks" },
+          { t: 167.4, l: "Say you'll see me again" },
+          { t: 169.3, l: "Even if it's just pretend" },
+          { t: 173.3, l: "Say you'll remember me" },
+          { t: 176.5, l: "Standing in a nice dress" },
+          { t: 177.3, l: "Staring at the sunset, babe" },
+          { t: 180.1, l: "Red lips and rosy cheeks" },
+          { t: 182.3, l: "Say you'll see me again" },
+          { t: 183.8, l: "Even if it's just (pretend, just pretend)" },
+          { t: 187.0, l: "In your wildest dreams, ah-ah, ha" },
+          { t: 193.8, l: "In your wildest dreams, ah-ah, ha" },
+          { t: 198.7, l: "Even if it's just stayed in your wildest dreams, ah-ah, ha" },
+          { t: 206.8, l: "In your wildest dreams, ah-ah, ha" },
+          { t: 211.8, l: "..." },
+        ]
+      },
+      {
+        titulo: "Video Games",
+        artista: "Lana Del Rey · Born to Die",
+        archivo: "Video Games.mp3",
+        portada: "https://upload.wikimedia.org/wikipedia/en/6/6a/Paradise_EP.png",
+        videoFondo: "Video Games.mp4",
+        tieneCarta: false,
+        letra: [
+          { t: 19.7,  l: "Swinging in the backyard" },
+          { t: 22.0,  l: "Pull up in your fast car whistling my name" },
+          { t: 27.6,  l: "Open up a beer" },
+          { t: 29.3,  l: "And you say get over here and play a video game" },
+          { t: 33.0,  l: "..." },
+          { t: 35.0,  l: "I'm in his favorite sun dress" },
+          { t: 37.3,  l: "Watching me get undressed take that body downtown" },
+          { t: 43.2,  l: "I say you the bestest" },
+          { t: 45.8,  l: "Lean in for a big kiss put his favorite perfume on" },
+          { t: 51.1,  l: "Go play your video game" },
+          { t: 53.0,  l: "..." },
+          { t: 55.2,  l: "It's you, it's you, it's all for you" },
+          { t: 59.0,  l: "Everything I do" },
+          { t: 61.1,  l: "I tell you all the time" },
+          { t: 64.2,  l: "Heaven is a place on earth with you" },
+          { t: 67.7,  l: "Tell me all the things you want to do" },
+          { t: 71.5,  l: "I heard that you like the bad girls honey, is that true?" },
+          { t: 80.1,  l: "It's better than I ever even knew" },
+          { t: 83.1,  l: "They say that the world was built for two" },
+          { t: 87.3,  l: "Only worth living if somebody is loving you" },
+          { t: 96.1,  l: "Baby now you do" },
+          { t: 100.0, l: "..." },
+          { t: 106.7, l: "Singing in the old bars" },
+          { t: 108.2, l: "Swinging with the old stars" },
+          { t: 110.1, l: "Living for the fame" },
+          { t: 113.5, l: "Kissing in the blue dark" },
+          { t: 116.4, l: "Playing pool and wild darts" },
+          { t: 118.1, l: "Video games" },
+          { t: 120.0, l: "..." },
+          { t: 121.5, l: "He holds me in his big arms" },
+          { t: 124.0, l: "Drunk and I am seeing stars" },
+          { t: 126.0, l: "This is all I think of" },
+          { t: 129.5, l: "Watching all our friends fall" },
+          { t: 132.1, l: "In and out of Old Paul's" },
+          { t: 133.9, l: "This is my idea of fun" },
+          { t: 137.2, l: "Playing video games" },
+          { t: 140.4, l: "..." },
+          { t: 142.0, l: "It's you, it's you, it's all for you" },
+          { t: 145.1, l: "Everything I do" },
+          { t: 148.1, l: "I tell you all the time" },
+          { t: 150.0, l: "Heaven is a place on earth with you" },
+          { t: 153.1, l: "Tell me all the things you want to do" },
+          { t: 158.1, l: "I heard that you like the bad girls honey, is that true?" },
+          { t: 165.1, l: "It's better than I ever even knew" },
+          { t: 169.1, l: "They say that the world was built for two" },
+          { t: 173.3, l: "Only worth living if somebody is loving you" },
+          { t: 182.6, l: "Baby now you do" },
+          { t: 185.0, l: "..." },
+          { t: 200.0, l: "It's you, it's you, it's all for you" },
+          { t: 204.0, l: "Everything I do" },
+          { t: 207.5, l: "I tell you all the time" },
+          { t: 208.4, l: "Heaven is a place on earth with you" },
+          { t: 212.0, l: "Tell me all the things you want to do" },
+          { t: 217.0, l: "I heard that you like the bad girls honey, is that true?" },
+          { t: 224.1, l: "It's better than I ever even knew" },
+          { t: 228.0, l: "They say that the world was built for two" },
+          { t: 232.0, l: "Only worth living if somebody is loving you" },
+          { t: 242.0, l: "Baby now you do" },
+          { t: 245.0, l: "..." },
+        ]
+      },
+      {
+        titulo: "Dancing Queen",
+        artista: "ABBA · Arrival",
+        archivo: "Dancing Queen.mp3",
+        portada: "https://upload.wikimedia.org/wikipedia/en/e/ef/ABBA_-_Dancing_Queen.png",
+        videoFondo: "Dancing Queen.mp4",
+        tieneCarta: false,
+        letra: [
+          { t: 17.5,  l: "Ooh, you can dance, you can jive" },
+          { t: 25.1,  l: "Having the time of your life" },
+          { t: 26.8,  l: "Ooh, see that girl, watch that scene" },
+          { t: 33.1,  l: "Digging the Dancing Queen" },
+          { t: 38.0,  l: "..." },
+          { t: 43.9,  l: "Friday night and the lights are low" },
+          { t: 48.3,  l: "Looking out for a place to go" },
+          { t: 53.7,  l: "Where they play the right music, getting in the swing" },
+          { t: 58.0,  l: "You come to look for a king" },
+          { t: 60.5,  l: "..." },
+          { t: 63.1,  l: "Anybody could be that guy" },
+          { t: 68.0,  l: "Night is young and the music's high" },
+          { t: 72.8,  l: "With a bit of rock music, everything is fine" },
+          { t: 77.0,  l: "You're in the mood for a dance" },
+          { t: 81.0,  l: "And when you get the chance" },
+          { t: 84.1,  l: "..." },
+          { t: 86.0,  l: "You are the Dancing Queen" },
+          { t: 89.3,  l: "Young and sweet, only seventeen" },
+          { t: 96.2,  l: "Dancing Queen" },
+          { t: 99.0,  l: "Feel the beat from the tambourine, oh yeah" },
+          { t: 105.0, l: "..." },
+          { t: 106.0, l: "You can dance, you can jive" },
+          { t: 111.0, l: "Having the time of your life" },
+          { t: 114.8, l: "Ooh, see that girl, watch that scene" },
+          { t: 120.0, l: "Digging the Dancing Queen" },
+          { t: 123.9, l: "..." },
+          { t: 134.8, l: "You're a teaser, you turn 'em on" },
+          { t: 139.3, l: "Leave 'em burning and then you're gone" },
+          { t: 144.0, l: "Looking out for another, anyone will do" },
+          { t: 148.0, l: "You're in the mood for a dance" },
+          { t: 151.8, l: "And when you get the chance" },
+          { t: 154.0, l: "..." },
+          { t: 157.0, l: "You are the Dancing Queen" },
+          { t: 160.1, l: "Young and sweet, only seventeen" },
+          { t: 168.0, l: "Dancing Queen" },
+          { t: 170.0, l: "Feel the beat from the tambourine, oh yeah" },
+          { t: 177.0, l: "..." },
+          { t: 178.0, l: "You can dance, you can jive" },
+          { t: 182.1, l: "Having the time of your life" },
+          { t: 186.0, l: "Ooh, see that girl, watch that scene" },
+          { t: 191.0, l: "Digging the Dancing Queen" },
+          { t: 195.0, l: "..." },
+          { t: 201.0, l: "Digging the Dancing Queen" },
+          { t: 210.0, l: "..." },
+        ]
+      },
+      {
+        titulo: "I Wanna Be Yours",
+        artista: "Arctic Monkeys · AM",
+        archivo: "I Wanna Be Yours.mp3",
+        portada: "https://upload.wikimedia.org/wikipedia/pt/9/96/Capa-AM_%28oficial%29.jpeg",
+        videoFondo: "I Wanna Be Yours.mp4",
+        tieneCarta: true,
+        tiempoCartaAparece: 163.8,
+        letra: [
+          { t: 18.0,  l: "I wanna be your vacuum cleaner" },
+          { t: 21.5,  l: "Breathing in your dust" },
+          { t: 25.0,  l: "I wanna be your Ford Cortina" },
+          { t: 28.5,  l: "I will never rust" },
+          { t: 32.0,  l: "If you like your coffee hot" },
+          { t: 36.0,  l: "Let me be your coffee pot" },
+          { t: 39.8,  l: "You call the shots, babe" },
+          { t: 42.3,  l: "I just wanna be yours" },
+          { t: 44.0,  l: "..." },
+          { t: 46.5,  l: "Secrets I have held in my heart" },
+          { t: 50.0,  l: "Are harder to hide than I thought" },
+          { t: 53.0,  l: "Maybe I just wanna be yours" },
+          { t: 57.0,  l: "I wanna be yours" },
+          { t: 59.0,  l: "I wanna be yours" },
+          { t: 60.0,  l: "..." },
+          { t: 62.0,  l: "Wanna be yours" },
+          { t: 65.5,  l: "Wanna be yours" },
+          { t: 68.8,  l: "Wanna be yours" },
+          { t: 73.0,  l: "..." },
+          { t: 75.0,  l: "Let me be your 'leccy meter" },
+          { t: 79.0,  l: "And I'll never run out" },
+          { t: 81.7,  l: "Let me be the portable heater" },
+          { t: 85.5,  l: "That you'll get cold without" },
+          { t: 89.0,  l: "I wanna be your setting lotion (wanna Be)" },
+          { t: 93.0,  l: "Hold your hair in deep devotion (how deep?)" },
+          { t: 96.0,  l: "At least as deep as the Pacific Ocean" },
+          { t: 99.8,  l: "I just wanna be yours" },
+          { t: 102.0, l: "..." },
+          { t: 103.0, l: "Secrets I have held in my heart" },
+          { t: 107.0, l: "Are harder to hide than I thought" },
+          { t: 110.0, l: "Maybe I just wanna be yours" },
+          { t: 114.0, l: "I wanna be yours" },
+          { t: 115.6, l: "I wanna be yours" },
+          { t: 118.0, l: "..." },
+          { t: 119.5, l: "Wanna be yours" },
+          { t: 122.8, l: "Wanna be yours" },
+          { t: 125.8, l: "Wanna be yours" },
+          { t: 129.0, l: "..." },
+          { t: 130.0, l: "Wanna be yours" },
+          { t: 133.0, l: "Wanna be yours" },
+          { t: 137.0, l: "Wanna be yours" },
+          { t: 140.0, l: "Wanna be yours" },
+          { t: 144.0, l: "(Wanna be yours)" },
+          { t: 145.9, l: "..." },
+          { t: 146.0, l: "I wanna be your vacuum cleaner(wanna be yours)" },
+          { t: 150.0, l: "Breathin'in your dust(wanna be yours)" },
+          { t: 153.0, l: "I wanna be your Food Cortinta(wanna be yours)" },
+          { t: 157.0, l: "I will never rust(wanna be yours)" },
+          { t: 160.0, l: "I just wanna be yours(wanna be yours)" },
+          { t: 163.8, l: "I just wanna be yours(wanna be yours)" },
+          { t: 167.0, l: "I just wanna be yours(wanna be yours)" },
+          { t: 170.0, l: "..." },
+        ]
+      }
+    ];
+
+    // Elementos
+    const audio         = document.getElementById('audio');
+    const videoFondo    = document.getElementById('videoFondo');
+    const contenedor    = document.getElementById('contenedor');
+    const barFill       = document.getElementById('barFill');
+    const barWrap       = document.getElementById('barWrap');
+    const tActual       = document.getElementById('tActual');
+    const tTotal        = document.getElementById('tTotal');
+    const btnPlay       = document.getElementById('btnPlay');
+    const btnHeart      = document.getElementById('btnHeart');
+    const btnShuffle    = document.getElementById('btnShuffle');
+    const btnRepeat     = document.getElementById('btnRepeat');
+    const btnPrev       = document.getElementById('btnPrev');
+    const btnNext       = document.getElementById('btnNext');
+    const selectCancion = document.getElementById('selectCancion');
+    const imgPortada    = document.getElementById('imgPortada');
+    const txtTitulo     = document.getElementById('txtTitulo');
+    const txtArtista    = document.getElementById('txtArtista');
+
+    // Carta
+    const cartaHint      = document.getElementById('cartaHint');
+    const btnCarta       = document.getElementById('btnCarta');
+    const cartaOverlay   = document.getElementById('cartaOverlay');
+    const sobreSolapa    = document.getElementById('sobreSolapa');
+    const cartaPapel     = document.getElementById('cartaPapel');
+    const cartaTexto     = document.getElementById('cartaTexto');
+    const lacre          = document.getElementById('lacre');
+    const btnCerrarCarta = document.getElementById('btnCerrarCarta');
+
+    let corazon = false;
+    let shuffleActivo = false;
+    let repeatEstado = 0;
+    let cancionActual = 0;
+    let letra = [];
+    let cartaMostrada = false;
+
+    function cambiarVideo(nuevoSrc) {
+      videoFondo.classList.add('fade-out');
+      setTimeout(() => {
+        videoFondo.querySelector('source').src = nuevoSrc;
+        videoFondo.load();
+        videoFondo.play();
+        videoFondo.classList.remove('fade-out');
+      }, 400);
+    }
+
+    function cargarCancion(index) {
+      const c = canciones[index];
+      audio.src = c.archivo;
+      imgPortada.src = c.portada;
+      txtTitulo.textContent = c.titulo;
+      txtArtista.textContent = c.artista;
+      cambiarVideo(c.videoFondo);
+      letra = [...c.letra];
+      construirLetra();
+      tTotal.textContent = '--:--';
+      tActual.textContent = '0:00';
+      barFill.style.width = '0%';
+      btnPlay.textContent = '▶';
+      cartaHint.classList.remove('visible');
+      cartaMostrada = false;
+    }
+
+    function construirLetra() {
+      contenedor.innerHTML = '';
+      letra.forEach((linea) => {
+        const div = document.createElement('div');
+        div.className = 'lyric-line';
+        div.textContent = linea.l;
+        contenedor.appendChild(div);
+      });
+    }
+
+    function fmt(s) {
+      if (isNaN(s) || !isFinite(s)) return '0:00';
+      const m = Math.floor(s / 60);
+      const seg = Math.floor(s % 60);
+      return m + ':' + String(seg).padStart(2, '0');
+    }
+
+    function actualizarLetra(t) {
+      const lineas = contenedor.querySelectorAll('.lyric-line');
+      if (!lineas.length) return;
+      let activa = -1;
+      for (let i = letra.length - 1; i >= 0; i--) {
+        if (t >= letra[i].t) { activa = i; break; }
+      }
+      lineas.forEach((el, i) => {
+        el.classList.remove('activa', 'pasada');
+        if (i === activa) {
+          el.classList.add('activa');
+          el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        } else if (i < activa) {
+          el.classList.add('pasada');
+        }
+      });
+
+      const c = canciones[cancionActual];
+      if (c.tieneCarta && !cartaMostrada && t >= c.tiempoCartaAparece) {
+        cartaMostrada = true;
+        setTimeout(() => {
+          cartaHint.classList.add('visible');
+        }, 300);
+      }
+    }
+
+    btnCarta.addEventListener('click', () => {
+      cartaOverlay.classList.add('abierta');
+      setTimeout(() => { lacre.classList.add('oculto'); }, 300);
+      setTimeout(() => { sobreSolapa.classList.add('abierta'); }, 600);
+      setTimeout(() => { cartaPapel.classList.add('emergiendo'); }, 1000);
+      setTimeout(() => { cartaTexto.classList.add('visible'); }, 1400);
+    });
+
+    function cerrarCarta() {
+      cartaTexto.classList.remove('visible');
+      setTimeout(() => {
+        cartaPapel.classList.remove('emergiendo');
+        setTimeout(() => {
+          sobreSolapa.classList.remove('abierta');
+          setTimeout(() => {
+            lacre.classList.remove('oculto');
+            cartaOverlay.classList.remove('abierta');
+          }, 500);
+        }, 600);
+      }, 300);
+    }
+
+    btnCerrarCarta.addEventListener('click', cerrarCarta);
+    cartaOverlay.addEventListener('click', (e) => {
+      if (e.target === cartaOverlay) cerrarCarta();
+    });
+
+    selectCancion.addEventListener('change', () => {
+      cancionActual = parseInt(selectCancion.value);
+      cargarCancion(cancionActual);
+    });
+
+    audio.addEventListener('timeupdate', () => {
+      const t   = audio.currentTime;
+      const dur = audio.duration || 1;
+      barFill.style.width = (t / dur * 100) + '%';
+      tActual.textContent = fmt(t);
+      actualizarLetra(t);
+    });
+
+    audio.addEventListener('loadedmetadata', () => {
+      tTotal.textContent = fmt(audio.duration);
+    });
+
+    btnPlay.addEventListener('click', () => {
+      if (audio.paused) { audio.play(); btnPlay.textContent = '⏸'; }
+      else { audio.pause(); btnPlay.textContent = '▶'; }
+    });
+
+    audio.addEventListener('play', () => { btnPlay.textContent = '⏸'; });
+    audio.addEventListener('pause', () => { btnPlay.textContent = '▶'; });
+    audio.addEventListener('ended', () => {
+      if (repeatEstado === 1) {
+        audio.currentTime = 0;
+        audio.play();
+      } else {
+        cancionActual = (cancionActual + 1) % canciones.length;
+        selectCancion.value = cancionActual;
+        cargarCancion(cancionActual);
+        audio.play();
+      }
+    });
+
+    barWrap.addEventListener('click', (e) => {
+      if (!audio.duration) return;
+      const rect  = barWrap.getBoundingClientRect();
+      const ratio = (e.clientX - rect.left) / rect.width;
+      audio.currentTime = ratio * audio.duration;
+    });
+
+    btnHeart.addEventListener('click', () => {
+      corazon = !corazon;
+      btnHeart.textContent = corazon ? '♥' : '♡';
+      btnHeart.style.color = corazon ? '#e74c3c' : '#1DB954';
+    });
+
+    btnShuffle.addEventListener('click', () => {
+      shuffleActivo = !shuffleActivo;
+      btnShuffle.classList.toggle('activo', shuffleActivo);
+    });
+
+    btnRepeat.addEventListener('click', () => {
+      repeatEstado = (repeatEstado + 1) % 3;
+      btnRepeat.classList.remove('activo', 'repeat-uno');
+      if (repeatEstado === 1) btnRepeat.classList.add('activo', 'repeat-uno');
+      else if (repeatEstado === 2) btnRepeat.classList.add('activo');
+    });
+
+    btnPrev.addEventListener('click', () => {
+      if (audio.currentTime > 3) {
+        audio.currentTime = 0;
+      } else {
+        cancionActual = (cancionActual - 1 + canciones.length) % canciones.length;
+        selectCancion.value = cancionActual;
+        cargarCancion(cancionActual);
+      }
+      if (audio.paused) audio.play();
+    });
+
+    btnNext.addEventListener('click', () => {
+      cancionActual = (cancionActual + 1) % canciones.length;
+      selectCancion.value = cancionActual;
+      cargarCancion(cancionActual);
+      audio.play();
+    });
+
+    cargarCancion(0);
+  </script>
+</body>
+</html>
